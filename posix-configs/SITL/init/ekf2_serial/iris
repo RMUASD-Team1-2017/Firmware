@@ -64,6 +64,7 @@ mc_pos_control start
 mc_att_control start
 mixer load /dev/pwm_output0 ROMFS/px4fmu_common/mixers/quad_dc.main.mix
 mavlink start -x -d /dev/ttyPX4 -m onboard -v -v
+mavlink start -x -u 14557 -r 4000000 -m onboard -o 14540 -v -v
 mavlink stream -r 50 -s POSITION_TARGET_LOCAL_NED -d /dev/ttyPX4    
 mavlink stream -r 50 -s LOCAL_POSITION_NED -d /dev/ttyPX4
 mavlink stream -r 50 -s GLOBAL_POSITION_INT -d /dev/ttyPX4
