@@ -239,9 +239,9 @@ private:
 	control::BlockParamInt _param_onboard_enabled;
 	control::BlockParamFloat _param_takeoff_alt;
 	control::BlockParamFloat _param_dist_1wp;
+	control::BlockParamFloat _param_dist_between_wps;
 	control::BlockParamInt _param_altmode;
 	control::BlockParamInt _param_yawmode;
-	control::BlockParamInt _param_force_vtol;
 	control::BlockParamFloat _param_fw_climbout_diff;
 
 	struct mission_s _onboard_mission {};

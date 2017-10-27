@@ -102,7 +102,6 @@ MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	_hil_local_pos{},
 	_hil_land_detector{},
 	_control_mode{},
-	_actuator_armed{},
 	_global_pos_pub(nullptr),
 	_local_pos_pub(nullptr),
 	_attitude_pub(nullptr),
@@ -167,6 +166,7 @@ MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 MavlinkReceiver::~MavlinkReceiver()
 {
 	orb_unsubscribe(_control_mode_sub);
+	orb_unsubscribe(_actuator_armed_sub);
 }
 
 void MavlinkReceiver::acknowledge(uint8_t sysid, uint8_t compid, uint16_t command, int ret)
@@ -405,8 +405,6 @@ MavlinkReceiver::evaluate_target_ok(int command, int target_system, int target_c
 	switch (command) {
 
 	case MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES:
-
-	/* fallthrough */
 	case MAV_CMD_REQUEST_PROTOCOL_VERSION:
 		/* broadcast and ignore component */
 		target_ok = (target_system == 0) || (target_system == mavlink_system.sysid);
@@ -424,21 +422,23 @@ MavlinkReceiver::evaluate_target_ok(int command, int target_system, int target_c
 void
 MavlinkReceiver::send_flight_information()
 {
-	bool updated;
-	mavlink_flight_information_t flight_info;
-	uuid_uint32_t uid;
-	board_get_uuid32(uid);
+	mavlink_flight_information_t flight_info{};
 
-	flight_info.flight_uuid = (((uint64_t)uid[PX4_CPU_UUID_WORD32_UNIQUE_M]) << 32) |
-				  uid[PX4_CPU_UUID_WORD32_UNIQUE_H];
+	param_t param_flight_uuid = param_find("COM_FLIGHT_UUID");
 
-	orb_check(_actuator_armed_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(actuator_armed), _actuator_armed_sub, &_actuator_armed);
+	if (param_flight_uuid != PARAM_INVALID) {
+		int32_t flight_uuid;
+		param_get(param_flight_uuid, &flight_uuid);
+		flight_info.flight_uuid = (uint64_t)flight_uuid;
 	}
 
-	flight_info.arming_time_utc = flight_info.takeoff_time_utc = _actuator_armed.armed_time_ms;
+	actuator_armed_s actuator_armed;
+	int ret = orb_copy(ORB_ID(actuator_armed), _actuator_armed_sub, &actuator_armed);
+
+	if (ret == 0 && actuator_armed.timestamp != 0) {
+		flight_info.arming_time_utc = flight_info.takeoff_time_utc = actuator_armed.armed_time_ms;
+	}
+
 	flight_info.time_boot_ms = hrt_absolute_time() / 1000;
 	mavlink_msg_flight_information_send_struct(_mavlink->get_channel(), &flight_info);
 }
@@ -461,22 +461,7 @@ MavlinkReceiver::handle_message_command_long(mavlink_message_t *msg)
 		return;
 	}
 
-	//check for MAVLINK terminate command
-	if (cmd_mavlink.command == MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) {
-
-		int cmd_id = int(cmd_mavlink.param1);
-
-		if (cmd_id == 10) {
-			/* This is the link shutdown command, terminate mavlink */
-			PX4_WARN("terminated by remote");
-			fflush(stdout);
-			usleep(50000);
-
-			/* terminate other threads and this thread */
-			_mavlink->_task_should_exit = true;
-		}
-
-	} else if (cmd_mavlink.command == MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES) {
+	if (cmd_mavlink.command == MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES) {
 		/* send autopilot version message */
 		_mavlink->send_autopilot_capabilites();
 
@@ -567,22 +552,7 @@ MavlinkReceiver::handle_message_command_int(mavlink_message_t *msg)
 		return;
 	}
 
-	//check for MAVLINK terminate command
-	if (cmd_mavlink.command == MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN) {
-
-		int cmd_id = int(cmd_mavlink.param1);
-
-		if (cmd_id == 10) {
-			/* This is the link shutdown command, terminate mavlink */
-			PX4_WARN("terminated by remote");
-			fflush(stdout);
-			usleep(50000);
-
-			/* terminate other threads and this thread */
-			_mavlink->_task_should_exit = true;
-		}
-
-	} else if (cmd_mavlink.command == MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES) {
+	if (cmd_mavlink.command == MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES) {
 		/* send autopilot version message */
 		_mavlink->send_autopilot_capabilites();
 
@@ -698,8 +668,9 @@ MavlinkReceiver::handle_message_optical_flow_rad(mavlink_message_t *msg)
 	mavlink_optical_flow_rad_t flow;
 	mavlink_msg_optical_flow_rad_decode(msg, &flow);
 
-	enum Rotation flow_rot;
-	param_get(param_find("SENS_FLOW_ROT"), &flow_rot);
+	int32_t flow_rot_int;
+	param_get(param_find("SENS_FLOW_ROT"), &flow_rot_int);
+	const enum Rotation flow_rot = (Rotation)flow_rot_int;
 
 	struct optical_flow_s f = {};
 
@@ -2643,7 +2614,7 @@ MavlinkReceiver::receive_start(pthread_t *thread, Mavlink *parent)
 	param.sched_priority = SCHED_PRIORITY_MAX - 80;
 	(void)pthread_attr_setschedparam(&receiveloop_attr, &param);
 
-	pthread_attr_setstacksize(&receiveloop_attr, PX4_STACK_ADJUSTED(2140));
+	pthread_attr_setstacksize(&receiveloop_attr, PX4_STACK_ADJUSTED(2840));
 	pthread_create(thread, &receiveloop_attr, MavlinkReceiver::start_helper, (void *)parent);
 
 	pthread_attr_destroy(&receiveloop_attr);
