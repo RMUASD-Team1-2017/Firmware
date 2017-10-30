@@ -25,9 +25,6 @@
 [submodule "src/lib/DriverFramework"]
 	path = src/lib/DriverFramework
 	url = https://github.com/PX4/DriverFramework.git
-[submodule "src/lib/ecl"]
-	path = src/lib/ecl
-	url = https://github.com/PX4/ecl.git
 [submodule "cmake/cmake_hexagon"]
 	path = cmake/cmake_hexagon
 	url = https://github.com/ATLFlight/cmake_hexagon
@@ -46,3 +43,6 @@
 [submodule "cmake/configs/uavcan_board_ident"]
 	path = cmake/configs/uavcan_board_ident
 	url = https://github.com/PX4/uavcan_board_ident.git
+[submodule "src/lib/ecl"]
+	path = src/lib/ecl
+	url = https://github.com/PX4/ecl.git
