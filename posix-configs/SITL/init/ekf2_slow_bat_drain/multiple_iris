@@ -1,6 +1,7 @@
 uorb start
 param load
 dataman start
+param set BAT_N_CELLS 3
 param set CAL_ACC0_ID 1376264
 param set CAL_ACC0_XOFF 0.01
 param set CAL_ACC0_XSCALE 1.01
@@ -43,10 +44,8 @@ param set SENS_BOARD_X_OFF 0.000001
 param set SYS_AUTOSTART 4010
 param set SYS_MC_EST_GROUP 2
 param set SYS_RESTART_TYPE 2
-param set MAV_BROADCAST  1
-param set SYS_COMPANION 57600
 replay tryapplyparams
-simulator start -s
+simulator start -s -u _SIMPORT_
 tone_alarm start
 gyrosim start
 accelsim start
@@ -62,21 +61,17 @@ ekf2 start
 mc_pos_control start
 mc_att_control start
 mixer load /dev/pwm_output0 ROMFS/px4fmu_common/mixers/quad_dc.main.mix
-mavlink start -x -d /dev/ttyPX4 -m onboard -v -v
-mavlink start -x -u 14557 -r 4000000 -m onboard -o 14540 -v -v
-mavlink start -x -u 14554 -r 4000000 -m onboard -o 14541 -v -v
-mavlink stream -r 50 -s POSITION_TARGET_LOCAL_NED -d /dev/ttyPX4    
-mavlink stream -r 50 -s LOCAL_POSITION_NED -d /dev/ttyPX4
-mavlink stream -r 50 -s GLOBAL_POSITION_INT -d /dev/ttyPX4
-mavlink stream -r 50 -s ATTITUDE -d /dev/ttyPX4
-mavlink stream -r 50 -s ATTITUDE_QUATERNION -d /dev/ttyPX4
-mavlink stream -r 50 -s ATTITUDE_TARGET -d /dev/ttyPX4
-mavlink stream -r 50 -s SERVO_OUTPUT_RAW_0 -d /dev/ttyPX4
-mavlink stream -r 20 -s RC_CHANNELS -d /dev/ttyPX4
-mavlink stream -r 250 -s HIGHRES_IMU -d /dev/ttyPX4
-mavlink stream -r 10 -s OPTICAL_FLOW_RAD -d /dev/ttyPX4             
-
-
+mavlink start -x -u _MAVPORT_ -r 4000000 -o _MAVOPORT_
+mavlink start -x -u _MAVPORT2_ -r 4000000 -m onboard -o _MAVOPORT2_
+mavlink stream -r 50 -s POSITION_TARGET_LOCAL_NED -u _MAVPORT_
+mavlink stream -r 50 -s LOCAL_POSITION_NED -u _MAVPORT_
+mavlink stream -r 50 -s GLOBAL_POSITION_INT -u _MAVPORT_
+mavlink stream -r 50 -s ATTITUDE -u _MAVPORT_
+mavlink stream -r 50 -s ATTITUDE_QUATERNION -u _MAVPORT_
+mavlink stream -r 50 -s ATTITUDE_TARGET -u _MAVPORT_
+mavlink stream -r 20 -s RC_CHANNELS -u _MAVPORT_
+mavlink stream -r 250 -s HIGHRES_IMU -u _MAVPORT_
+mavlink stream -r 10 -s OPTICAL_FLOW_RAD -u _MAVPORT_
 logger start -e -t
 mavlink boot_complete
 replay trystart

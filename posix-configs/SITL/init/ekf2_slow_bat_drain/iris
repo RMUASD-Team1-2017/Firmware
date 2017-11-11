@@ -45,6 +45,7 @@ param set SYS_MC_EST_GROUP 2
 param set SYS_RESTART_TYPE 2
 param set MAV_BROADCAST  1
 param set SYS_COMPANION 57600
+param set SIM_BAT_DRAIN 6000
 replay tryapplyparams
 simulator start -s
 tone_alarm start
